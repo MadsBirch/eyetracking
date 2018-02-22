@@ -13,13 +13,10 @@ library(grid)
 library(pastecs)
 
 # subset data
-
-#soc_sub = subset(fix_V2, Task == "SocialEngagement")
-sample = subset(samples_V2, Task == "SocialEngagement")
+sample = subset(samples_V2, Task == "SocialEngagement" & Blink == 0)
 
 # downsample
-
-sample = sample[sample(nrow(sample), 10000), ]
+#sample = sample[sample(nrow(sample), 10000), ]
 
 # ------ modelling ----- 
 
@@ -48,9 +45,8 @@ soc_sub$Ostension[soc_sub$Ostension == "-o"] = 0
 
 
 # modelling using lmer wihtout family specifed as binomial
-soc_m1 = lmer(PupilSize ~ Directionality * Ostension + (1+Directionality|ParticipantID)+(1+Ostension|ParticipantID), soc_sub)
+soc_m1 = lmer(PupilSize ~ Directionality * Ostension + (1+Directionality|ParticipantID)+(1+Ostension|ParticipantID), sample)
 summary(soc_m1)
-
 
 soc_m2 = lmer(PupilSize ~ Directionality + Ostension + (1+Directionality|ParticipantID)+(1+Ostension|ParticipantID), sample)
 summary(soc_m2)
@@ -68,31 +64,25 @@ summary(soc_m4)
 sample$ParticipantID = as.character(sample$ParticipantID)
 sample$ParticipantID = as.factor(sample$ParticipantID)
 sample$ParticipantID = as.numeric(sample$ParticipantID)
-
 folds=createFolds(unique(sample$ParticipantID), k = 3)
 
 
-soc_sub$ParticipantID = as.character(soc_sub$ParticipantID)
-soc_sub$ParticipantID = as.factor(soc_sub$ParticipantID)
-soc_sub$ParticipantID = as.numeric(soc_sub$ParticipantID)
-
-folds=createFolds(unique(soc_sub$ParticipantID), k = 3)
 # define which model you want to run cross validation on
-model = soc_m1
+model = soc_m4
 
 list = 1
 
 results1_a = data.frame()
 results1_c = data.frame()
 
-k = 1
+# k = 1
 for (d in list){
   for (k in folds){
     #------ Split into training and test data ------ 
     #Create training dataset, data not in fold k
-    data_train=subset(soc_sub,!(ParticipantID %in% k))
+    data_train=subset(sample,!(ParticipantID %in% k))
     #Create test dataset, data in fold k
-    data_test=subset(soc_sub,ParticipantID %in% k)
+    data_test=subset(sample,ParticipantID %in% k)
     
     #------ train model - apply model to data_train ------
     predict_train = predict(model, data_train, allow.new.levels =TRUE)
