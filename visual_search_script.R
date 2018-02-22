@@ -90,11 +90,6 @@ for (d in list){
 ggplot(subset(fix_V2, SearchType == "Count"), aes(Duration)) +geom_density()
 ggplot(subset(fix_V2, SearchType == "Search"), aes(Duration)) +geom_density()
 
-  
-  #kernel = "gaussian")
-#x, y, alpha, color, fill, linetype, size, weight
-#b + geom_density(aes(y = ..county..))
-
 
 #---------# heatmap plot from Fabio ----
 # defining colors, could be anything

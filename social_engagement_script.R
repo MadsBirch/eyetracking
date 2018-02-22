@@ -47,6 +47,7 @@ soc_sub$Ostension[soc_sub$Ostension == "-o"] = 0
 # modelling using lmer wihtout family specifed as binomial
 soc_m1 = lmer(PupilSize ~ Directionality * Ostension + (1+Directionality|ParticipantID)+(1+Ostension|ParticipantID), sample)
 summary(soc_m1)
+plot(soc_m1)
 
 soc_m2 = lmer(PupilSize ~ Directionality + Ostension + (1+Directionality|ParticipantID)+(1+Ostension|ParticipantID), sample)
 summary(soc_m2)
