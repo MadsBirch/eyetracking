@@ -58,6 +58,24 @@ summary(soc_m3)
 soc_m4 = lmer(PupilSize ~ Ostension + (1+Directionality|ParticipantID)+(1+Ostension|ParticipantID), sample)
 summary(soc_m4)
 
+
+# the above models do not converge
+# in an attempt to make the models converge, the random component of the models is simplified.
+# models now converge.
+# 
+soc_m1 = lmer(PupilSize ~ Directionality * Ostension + (1|ParticipantID), sample)
+summary(soc_m1)
+plot(soc_m1)
+
+soc_m2 = lmer(PupilSize ~ Directionality + Ostension + (1|ParticipantID), sample)
+summary(soc_m2)
+
+soc_m3 = lmer(PupilSize ~ Directionality + (1|ParticipantID), sample)
+summary(soc_m3)
+
+soc_m4 = lmer(PupilSize ~ Ostension + (1|ParticipantID), sample)
+summary(soc_m4)
+
 #Create folds from ParticipantID, which needs to be transformed first. 
 # Transformed from factor to character to make the variable forget the factor information
 # Then transformed to factor again and then to numeric

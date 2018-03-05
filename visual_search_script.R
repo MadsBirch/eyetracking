@@ -49,7 +49,7 @@ sub$ParticipantID = as.numeric(sub$ParticipantID)
 folds=createFolds(unique(sub$ParticipantID), k = 3)
 
 # define which model you want to run cross validation on
-model = m3
+model = m2
 list = 1
 
 results3_a = data.frame()
@@ -84,11 +84,10 @@ for (d in list){
 }
   
 
-#------------# visualizing SearchType----
+  #------------# visualizing SearchType----
 
 
 ggplot(subset(fix_V2, SearchType == "Count"), aes(Duration)) +geom_density()
-ggplot(subset(fix_V2, SearchType == "Search"), aes(Duration)) +geom_density()
 
 
 #---------# heatmap plot from Fabio ----
