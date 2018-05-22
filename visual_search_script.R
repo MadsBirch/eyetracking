@@ -37,6 +37,7 @@ m3 = glmer(Duration ~ SearchType + (1+SearchType|ParticipantID), data=sub, famil
 summary(m3)
 
 plot(m3)
+anova(m1,m2,m3)
 
 #Create folds from ParticipantID, which needs to be transformed first. 
 # Transformed from factor to character to make the variable forget the factor information

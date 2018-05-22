@@ -11,7 +11,8 @@ library(pROC)
 library(jpeg)
 library(grid)
 library(pastecs)
-
+library(waic)
+library(brms)
 # subset data
 sample = subset(samples_V2, Task == "SocialEngagement" & Blink == 0)
 
@@ -19,19 +20,26 @@ sample = subset(samples_V2, Task == "SocialEngagement" & Blink == 0)
 #sample = sample[sample(nrow(sample), 10000), ]
 
 # ------ modelling ----- 
-
-
 # plotting pupil size to investigate distribution
 # looks binomial?
 ggplot(sample, aes(PupilSize))+geom_density()
+ggplot(sample, aes(logPupil))+geom_density()
 
+# scaling time and pupil size
+sample$TimeScaled = scale(sample$TrialTime)
+sample$PupilScaled = scale(sample$PupilSize)
+
+# log transform pupilsize
+sample$logPupil = log(sample$PupilSize+1)
 
 
 # creating models
 
 # want to specify model with family = "binomial" as PupilSize looks like it is binomial
 # this model gives the following error: Error in eval(family$initialize, rho) : y values must be 0 <= y <= 1
-soc_m1_test = glmer(PupilSize ~ Directionality * Ostension + (1+Directionality|ParticipantID)+(1+Ostension|ParticipantID), sample, family = "binomial")
+soc_m1_test = glmer(logPupil~ Directionality + Ostension + TimeScaled + (1+ Directionality+Ostension|ParticipantID), sample, family = "binomial")
+summary(soc_m1_test)
+
 
 # tried recoding variables to 1 and 0, did not help
 soc_sub$Directionality = as.character(soc_sub$Directionality)
@@ -44,39 +52,32 @@ soc_sub$Ostension[soc_sub$Ostension == "+o"] = 1
 soc_sub$Ostension[soc_sub$Ostension == "-o"] = 0
 
 
-# modelling using lmer wihtout family specifed as binomial
-soc_m1 = lmer(PupilSize ~ Directionality * Ostension + (1+Directionality|ParticipantID)+(1+Ostension|ParticipantID), sample)
+
+# MODELS 
+soc_null_m = lmer(logPupil ~ 1 + (1|ParticipantID), sample)
+summary(soc_null_m)
+
+soc_m1 = lmer(logPupil ~ Directionality * Ostension + TimeScaled + (1+ Directionality+Ostension|ParticipantID), REML = F, sample)
 summary(soc_m1)
 plot(soc_m1)
 
-soc_m2 = lmer(PupilSize ~ Directionality + Ostension + (1+Directionality|ParticipantID)+(1+Ostension|ParticipantID), sample)
+soc_m2 = lmer(logPupil ~ Directionality + Ostension + TimeScaled + (1+ Directionality+Ostension|ParticipantID), sample)
 summary(soc_m2)
+plot(soc_m2)
 
-soc_m3 = lmer(PupilSize ~ Directionality + (1+Directionality|ParticipantID)+(1+Ostension|ParticipantID), sample)
+soc_m3 = lmer(logPupil ~ Directionality + TimeScaled + (1|ParticipantID), sample)
 summary(soc_m3)
 
-soc_m4 = lmer(PupilSize ~ Ostension + (1+Directionality|ParticipantID)+(1+Ostension|ParticipantID), sample)
+soc_m4 = lmer(logPupil~ Ostension + TimeScaled + (1+ Ostension|ParticipantID), sample)
 summary(soc_m4)
 
 
-# the above models do not converge
-# in an attempt to make the models converge, the random component of the models is simplified.
-# models now converge.
-# 
-soc_m1 = lmer(PupilSize ~ Directionality * Ostension + (1|ParticipantID), sample)
-summary(soc_m1)
-plot(soc_m1)
+AIC(soc_m1, soc_m2,soc_m3,soc_m4)
+anova(soc_m1, soc_m2,soc_m3,soc_m4)
 
-soc_m2 = lmer(PupilSize ~ Directionality + Ostension + (1|ParticipantID), sample)
-summary(soc_m2)
+sjp.lmer(soc_m1)
 
-soc_m3 = lmer(PupilSize ~ Directionality + (1|ParticipantID), sample)
-summary(soc_m3)
-
-soc_m4 = lmer(PupilSize ~ Ostension + (1|ParticipantID), sample)
-summary(soc_m4)
-
-#Create folds from ParticipantID, which needs to be transformed first. 
+# Create folds from ParticipantID, which needs to be transformed first. 
 # Transformed from factor to character to make the variable forget the factor information
 # Then transformed to factor again and then to numeric
 # sub$ParticipantN=as.numeric(as.factor(as.character(sub$ParticipantID)))
@@ -85,14 +86,13 @@ sample$ParticipantID = as.factor(sample$ParticipantID)
 sample$ParticipantID = as.numeric(sample$ParticipantID)
 folds=createFolds(unique(sample$ParticipantID), k = 3)
 
-
 # define which model you want to run cross validation on
-model = soc_m4
+model = soc_m1
 
 list = 1
 
 results1_a = data.frame()
-results1_c = data.frame()
+results_soc = data.frame()
 
 # k = 1
 for (d in list){
@@ -105,12 +105,12 @@ for (d in list){
     
     #------ train model - apply model to data_train ------
     predict_train = predict(model, data_train, allow.new.levels =TRUE)
-    rmse_train = rmse(data_train$PupilSize, predict_train)
+    rmse_train = rmse(data_train$logPupil, predict_train)
     
     #------ test the model - test model on data_test (last quarter) ------
     #Make predictions based on modeVIS
     predict_test=predict(model, data_test, allow.new.levels = TRUE)
-    rmse_test = rmse(data_test$PupilSize, predict_test)
+    rmse_test = rmse(data_test$logPupil, predict_test)
     
     #------ save the performance ------  
     one_row = data.frame(rmse_train, rmse_test)
@@ -119,14 +119,36 @@ for (d in list){
   }
   # adding mean and sd rmse
   results1_b = data.frame(mean_rmse = mean(results1_a$rmse_test), sd_rmse = sd(results1_a$rmse_test))
-  results1_c = rbind(results1_c, results1_b)
+  results_soc = rbind(results1_c, results1_b)
 }
 
 
 # ----- visualizing -----
 
+coef = coef(soc_m1)
+plot(coef)
+
+plot(soc_m1)
 
 ggplot(sample, aes(x=TrialTime, y=PupilSize))+
   geom_smooth(aes(color = Ostension))+
   facet_grid(~ Directionality)
 
+p_data <- as.data.frame(coef)
+data1$Subject <- factor(data1$Subject, ordered = FALSE)
+head(data1)
+
+
+coef %>% 
+  # save predicted values
+  mutate(pred_dist = fitted(soc_m1)) %>% 
+  # graph
+  ggplot(aes(x=logPupil, y=pred_dist, group=ParticipantID, color=ParticipantID)) + theme_classic() +
+  geom_line(size=1)
+
+data %>% 
+  # data
+  mutate(L1_resid = residuals(soc_m1, type = "response")) %>% 
+  # graph
+  ggplot(aes(x=L1_resid)) + theme_classic() +
+  geom_histogram(colour="black", fill="grey") 
