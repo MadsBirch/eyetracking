@@ -134,10 +134,6 @@ ggplot(sample, aes(x=TrialTime, y=PupilSize))+
   geom_smooth(aes(color = Ostension))+
   facet_grid(~ Directionality)
 
-p_data <- as.data.frame(coef)
-data1$Subject <- factor(data1$Subject, ordered = FALSE)
-head(data1)
-
 
 coef %>% 
   # save predicted values
